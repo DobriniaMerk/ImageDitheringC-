@@ -1,4 +1,6 @@
 ﻿#include <iostream>
+#include <algorithm>
+#include <iterator>
 #include <SFML/Window.hpp>
 #include <SFML/Graphics.hpp>
 #include <SFML/System.hpp>
@@ -31,27 +33,31 @@ namespace ImageDithering
         /// <param name="img">Source image</param>
         /// <param name="colorNum">Number of colors to return; Must be a power of two</param>
         /// <returns>Array of Color[colorNum]</returns>
-        static sf::Color[] QuantizeMedian(Image img, int colorNum)  // unfinished
+        static sf::Color* QuantizeMedian(sf::Image img, int colorNum)
         {
-            Color[][] oldColors = new Color[colorNum][];
-            Color[][] newColors = new Color[colorNum][];
-            Color[][] t = new Color[colorNum][];
-            oldColors[0] = new Color[img.Pixels.Length / 3];
+            sf::Color** oldColors = new sf::Color*[colorNum];
+            sf::Color** newColors = new sf::Color*[colorNum];
+            sf::Color** t = new sf::Color*[colorNum];
+
+            auto s = img.getSize();
+            int pixNum = s.x * s.y;
+            oldColors[0] = new sf::Color[pixNum];
 
             //  Temp variables
-            int skip = 300;
-            int arraySize = (img.Pixels.Length / 3) / skip;
+            int skip = 70;
+            int arraySize = pixNum / skip;
             int filledRows = 1;
             //  Temp variables
 
             for (int i = 0; i < colorNum; i++)  // initialize arrays
             {
-                newColors[i] = new Color[arraySize];
-                oldColors[i] = new Color[arraySize];
+                newColors[i] = new sf::Color[arraySize];
+                oldColors[i] = new sf::Color[arraySize];
             }
 
-            for (int i = 0; i < arraySize; i++)  // set first array of oldColors to img pixels, with interval of skip
-                oldColors[0][i] = new Color(img.Pixels[skip * i], img.Pixels[skip * i + 1], img.Pixels[skip * i + 2]);
+            for (int i = 0; i < s.x; i += skip)  // set first array of oldColors to img pixels, with interval of skip
+                for(int j = 0; j < s.y; j += skip)
+                    oldColors[0][i] = img.getPixel(i, j);
 
             while (filledRows < colorNum)  // while not all colors are done
             {
@@ -65,21 +71,23 @@ namespace ImageDithering
                 filledRows *= 2;
 
                 for (int y = 0; y < filledRows; y++)
-                {
-                    oldColors[y] = (Color[])newColors[y].Clone();  // copy newColors to oldColors
-                    newColors[y] = new Color[arraySize];
+                {;
+                    std::copy(newColors[y], newColors[y] + arraySize * sizeof(sf::Color), oldColors[y]);
+                    //std::copy(newColors[y], newColors[y] + arraySize, oldColors[y]); // if upper not working
+                    //oldColors[y] = newColors[y].Clone();  // copy newColors to oldColors
+                    newColors[y] = new sf::Color[arraySize];
                 }
 
-                Console.WriteLine(filledRows);
+                std::cout << filledRows << std::endl;
             }
 
-            Color[] ret = new Color[colorNum];  // colors to return
-            Vector3f sum = new Vector3f(0, 0, 0);
+            sf::Color* ret = new sf::Color[colorNum];  // colors to return
+            sf::Vector3f sum = sf::Vector3f(0, 0, 0);
 
             for (int i = 0; i < colorNum; i++)  // calculate mean color of each array and return them
             {
                 int n = 0;
-                foreach (Color c in oldColors[i])
+                foreach (sf::Color c in oldColors[i])
                 {
                     sum.X += c.R;
                     sum.Y += c.G;
@@ -88,7 +96,7 @@ namespace ImageDithering
                 }
 
                 sum /= n;
-                ret[i] = new Color((byte)sum.X, (byte)sum.Y, (byte)sum.Z);
+                ret[i] = new sf::Color((byte)sum.X, (byte)sum.Y, (byte)sum.Z);
             }
 
             return ret;
@@ -98,15 +106,15 @@ namespace ImageDithering
         /// Splits "colors" array in halves by maximum color channel
         /// </summary>
         /// <param name="colors">Colors to split</param>
-        /// <returns></returns>
-        static Color[][] QuantizeMedianSplit(Color[] colors)
+        /// <returns>sf::Color[][]</returns>
+        static sf::Color* QuantizeMedianSplit(Color[] colors)
         {
-            Color[][] ret = new Color[2][];
-            ret[0] = new Color[colors.Length/2];
-            ret[1] = new Color[colors.Length / 2];
+            sf::Color[][] ret = new sf::Color[2][];
+            ret[0] = new sf::Color[colors.Length/2];
+            ret[1] = new sf::Color[colors.Length / 2];
             int r = 0, g = 0, b = 0;
 
-            foreach (Color c in colors)
+            foreach (sf::Color c in colors)
             {
                 r += c.R;
                 g += c.G;
@@ -137,14 +145,14 @@ namespace ImageDithering
         /// Splits "colors" array in best point by maximum color channel
         /// </summary>
         /// <param name="colors">Colors to split</param>
-        /// <returns></returns>
-        static Color[][] QuantizeMedianSplitOptimal(Color[] colors)
+        /// <returns>sf::Color[][]</returns>
+        static sf::Color** QuantizeMedianSplitOptimal(sf::Color[] colors)
         {
-            Color[][] ret = new Color[2][];
+            sf::Color ret[2][];
             int r = 0, g = 0, b = 0;
             char channel = 'x';
 
-            foreach (Color c in colors)
+            foreach (sf::Color c in colors)
             {
                 r += c.R;
                 g += c.G;
@@ -205,22 +213,22 @@ namespace ImageDithering
         /// <param name="img">Sourse image to take colors out</param>
         /// <param name="colorNum">Number of colors to return</param>
         /// <returns>Color[colorNum]</returns>
-        public static Color[] Quantize(Image img, int colorNum)
+        static sf::Color* Quantize(sf::Image img, int colorNum)
         {
             Random random = new Random();
-            Color[] means = new Color[colorNum];
-            Color color;
+            sf::Color[] means = new sf::Color[colorNum];
+            sf::Color color;
             Vector3f sum = new Vector3f(0, 0, 0);
             int n, j;
 
             for (int i = 0; i < colorNum; i++)
-                means[i] = new Color((byte)random.Next(255), (byte)random.Next(255), (byte)random.Next(255));
+                means[i] = new sf::Color((byte)random.Next(255), (byte)random.Next(255), (byte)random.Next(255));
 
             for (int i = 0; i < 10; i++)
             {
                 j = 0;
 
-                foreach(Color mean in means)
+                foreach(sf::Color mean in means)
                 {
                     Console.WriteLine(j);
                     sum *= 0;
@@ -241,7 +249,7 @@ namespace ImageDithering
                     if (n != 0)
                     {
                         sum /= n;
-                        means[j] = new Color((byte)sum.X, (byte)sum.Y, (byte)sum.Z);
+                        means[j] = new sf::Color((byte)sum.X, (byte)sum.Y, (byte)sum.Z);
                     }
                     j++;
                 }
@@ -251,9 +259,9 @@ namespace ImageDithering
         }
 
 
-        static float DistanceTo(this Color self, Color other)  // to get proper distance you need sqare root of result; not using for optimisation
+        static float DistanceTo(sf::Color self, sf::Color other)  // to get proper distance you need sqare root of result; not using for optimisation
         {
-            return (self.R - other.R) * (self.R - other.R) + (self.G - other.G) * (self.G - other.G) + (self.B - other.B) * (self.B - other.B);
+            return (self.r - other.r) * (self.r - other.r) + (self.g - other.g) * (self.g - other.g) + (self.b - other.b) * (self.b - other.b);
         }
 
 
@@ -263,7 +271,7 @@ namespace ImageDithering
         /// <param name="color">Base color</param>
         /// <param name="search">Array for searching in</param>
         /// <param name="maxDist">Maximum distance of nearest color</param>
-        /// <returns></returns>
+        /// <returns>Color</returns>
         static sf::Color GetNearest(sf::Color color, sf::Color[] search, int maxDist)
         {
             float dist = -1, tDist = 0;
