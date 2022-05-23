@@ -26,26 +26,23 @@ namespace ImageDithering
         }
 
 
-
         /// <summary>
         /// Quatization by median cut
         /// </summary>
         /// <param name="img">Source image</param>
         /// <param name="colorNum">Number of colors to return; Must be a power of two</param>
         /// <returns>Array of Color[colorNum]</returns>
-        static sf::Color* QuantizeMedian(sf::Image img, int colorNum)
+        /*static sf::Color* QuantizeMedian(sf::Image img, int colorNum)
         {
             sf::Color** oldColors = new sf::Color*[colorNum];
             sf::Color** newColors = new sf::Color*[colorNum];
             sf::Color** t = new sf::Color*[colorNum];
 
             auto s = img.getSize();
-            int pixNum = s.x * s.y;
-            oldColors[0] = new sf::Color[pixNum];
 
             //  Temp variables
             int skip = 70;
-            int arraySize = pixNum / skip;
+            int arraySize = (s.x * s.y) / skip;
             int filledRows = 1;
             //  Temp variables
 
@@ -63,7 +60,7 @@ namespace ImageDithering
             {
                 for (int j = 0; j < filledRows; j++)
                 {
-                    t = QuantizeMedianSplitOptimal(oldColors[j]);  // split each filled row
+                    t = QuantizeMedianSplitOptimal(oldColors[j], arraySize);  // split each filled row
                     newColors[j * 2] = t[0];
                     newColors[j * 2 + 1] = t[1];  // assign them to newColors
                 }
@@ -72,7 +69,7 @@ namespace ImageDithering
 
                 for (int y = 0; y < filledRows; y++)
                 {;
-                    std::copy(newColors[y], newColors[y] + arraySize * sizeof(sf::Color), oldColors[y]);
+                    std::copy(newColors[y], newColors[y] + arraySize * sizeof(sf::Color), oldColors[y]);  //  ATTENTION, MAY NOT WORK
                     //std::copy(newColors[y], newColors[y] + arraySize, oldColors[y]); // if upper not working
                     //oldColors[y] = newColors[y].Clone();  // copy newColors to oldColors
                     newColors[y] = new sf::Color[arraySize];
@@ -83,80 +80,48 @@ namespace ImageDithering
 
             sf::Color* ret = new sf::Color[colorNum];  // colors to return
             sf::Vector3f sum = sf::Vector3f(0, 0, 0);
+            sf::Color c;
 
             for (int i = 0; i < colorNum; i++)  // calculate mean color of each array and return them
             {
-                int n = 0;
-                foreach (sf::Color c in oldColors[i])
+                float n = 0;
+                //foreach (sf::Color c in oldColors[i])
+                for(int j = 0; j < arraySize; j++)
                 {
-                    sum.X += c.R;
-                    sum.Y += c.G;
-                    sum.Z += c.B;
+                    c = oldColors[i][j];
+                    sum.x += c.r;
+                    sum.y += c.g;
+                    sum.z += c.b;
                     n++;
                 }
 
-                sum /= n;
-                ret[i] = new sf::Color((byte)sum.X, (byte)sum.Y, (byte)sum.Z);
+                sum = sum / n;
+                ret[i] = sf::Color(sum.x, sum.y, sum.z);
             }
 
             return ret;
-        }
-
-        /// <summary>
-        /// Splits "colors" array in halves by maximum color channel
-        /// </summary>
-        /// <param name="colors">Colors to split</param>
-        /// <returns>sf::Color[][]</returns>
-        static sf::Color* QuantizeMedianSplit(Color[] colors)
-        {
-            sf::Color[][] ret = new sf::Color[2][];
-            ret[0] = new sf::Color[colors.Length/2];
-            ret[1] = new sf::Color[colors.Length / 2];
-            int r = 0, g = 0, b = 0;
-
-            foreach (sf::Color c in colors)
-            {
-                r += c.R;
-                g += c.G;
-                b += c.B;
-            }
-
-            if (r > g && r > b)
-            {
-                colors = colors.OrderBy(order => order.R).ToArray();
-            }
-            else if (g > r && g > b)
-            {
-                colors = colors.OrderBy(order => order.G).ToArray();
-            }
-            else if (b > r && b > g)
-            {
-                colors = colors.OrderBy(order => order.B).ToArray();
-            }
-
-            ret[0] = colors.Take(colors.Length / 2).ToArray();
-            ret[1] = colors.Skip(colors.Length / 2).ToArray();
-
-            return ret;
-        }
+        }*/
 
 
         /// <summary>
         /// Splits "colors" array in best point by maximum color channel
         /// </summary>
-        /// <param name="colors">Colors to split</param>
+        /// <param name="colors">Colors[] to split</param>
         /// <returns>sf::Color[][]</returns>
-        static sf::Color** QuantizeMedianSplitOptimal(sf::Color[] colors)
+        /*static sf::Color** QuantizeMedianSplitOptimal(sf::Color* colors, int colorsLength)
         {
-            sf::Color ret[2][];
+            sf::Color** ret = new sf::Color*[2];
+            sf::Color c;
             int r = 0, g = 0, b = 0;
             char channel = 'x';
 
-            foreach (sf::Color c in colors)
+            //foreach (sf::Color c in colors)
+            for(int i = 0; i < colorsLength; i++)
             {
-                r += c.R;
-                g += c.G;
-                b += c.B;
+                c = colors[i];
+                r += c.r;
+                g += c.g;
+                b += c.b;
             }
 
             if (r > g && r > b)
@@ -204,7 +169,7 @@ namespace ImageDithering
             ret[1] = colors.Skip(colors.Length / 2).ToArray();
 
             return ret;
-        }
+        }*/
 
 
         /// <summary>
@@ -215,43 +180,45 @@ namespace ImageDithering
         /// <returns>Color[colorNum]</returns>
         static sf::Color* Quantize(sf::Image img, int colorNum)
         {
-            Random random = new Random();
-            sf::Color[] means = new sf::Color[colorNum];
+            sf::Color* means = new sf::Color[colorNum];
             sf::Color color;
-            Vector3f sum = new Vector3f(0, 0, 0);
-            int n, j;
+            sf::Vector3f sum = sf::Vector3f(0, 0, 0);
+            int n, num;
 
             for (int i = 0; i < colorNum; i++)
-                means[i] = new sf::Color((byte)random.Next(255), (byte)random.Next(255), (byte)random.Next(255));
+                means[i] = sf::Color(std::rand()%255, std::rand() % 255, std::rand() % 255);
 
             for (int i = 0; i < 10; i++)
             {
-                j = 0;
+                num = 0;
 
-                foreach(sf::Color mean in means)
+                //foreach(sf::Color mean in means)
+                for(int j = 0; j < colorNum; j++)
                 {
-                    Console.WriteLine(j);
-                    sum *= 0;
+                    std::cout << num << std::endl;
+                    sum = sum * 0.0f;
                     n = 0;
-
-                    for (int k = 3; k < img.Pixels.Length; k += 300)
+                    auto s = img.getSize();
+                    int imgSize = s.x * s.y;
+                    
+                    for (int k = 3; k < imgSize; k += 300)
                     {
-                        color = new Color(img.Pixels[k], img.Pixels[k - 1], img.Pixels[k - 2]);
-                        if (GetNearest(color, means, 250) == mean)
+                        color = sf::Color(img.getPixel(k%s.x, k/s.x));
+                        if (GetNearest(color, means, 250, colorNum) == means[j])
                         {
-                            sum.X += color.R;
-                            sum.Y += color.G;
-                            sum.Z += color.B;
+                            sum.x += color.r;
+                            sum.y += color.g;
+                            sum.z += color.b;
                             n++;
                         }
                     }
 
                     if (n != 0)
                     {
-                        sum /= n;
-                        means[j] = new sf::Color((byte)sum.X, (byte)sum.Y, (byte)sum.Z);
+                        sum /= (float)n;
+                        means[num] = sf::Color(sum.x, sum.y, sum.z);
                     }
-                    j++;
+                    num++;
                 }
             }
 
@@ -272,14 +239,17 @@ namespace ImageDithering
         /// <param name="search">Array for searching in</param>
         /// <param name="maxDist">Maximum distance of nearest color</param>
         /// <returns>Color</returns>
-        static sf::Color GetNearest(sf::Color color, sf::Color[] search, int maxDist)
+        static sf::Color GetNearest(sf::Color color, sf::Color* search, int maxDist, int searchSize)
         {
             float dist = -1, tDist = 0;
             sf::Color ret = color;
+            sf::Color c;
 
-            foreach (sf::Color c in search)
+            //foreach (sf::Color c in search)
+            for(int i = 0; i < searchSize; i++)
             {
-                tDist = color.DistanceTo(c);
+                c = search[i];
+                tDist = DistanceTo(color, c);
 
                 if (tDist < maxDist && (dist == -1 || tDist < dist))
                 {
@@ -291,85 +261,83 @@ namespace ImageDithering
             return ret;
         }
 
-        static sf::Color* Dither(sf::Image _image, int colorDepth, bool clustering = false)
-        {
-            sf::Image image = _image;
-            //sf::Color[] colors;
-            if (clustering)
-                sf::Color[] colors = Quantize(image, colorDepth);
-            else
-                sf::Color[] colors = QuantizeMedian(image, colorDepth);
-
-            for (sf::Uint8 x = 0; x < image.getSize().x; x++)
+        public:
+            static sf::Color* Dither(sf::Image _image, int colorDepth)
             {
-                for (sf::Uint8 y = 0; y < image.getSize().y; y++)
-                {
-                    sf::Color pix = image.getPixel(x, y);
+                sf::Image image = _image;
+                sf::Color* colors;
+                colors = Quantize(image, colorDepth);
 
-                    sf::Color wanted = GetNearest(pix, colors, 100000000);
+                for (int x = 0; x < image.getSize().x; x++)
+                {
+                    for (int y = 0; y < image.getSize().y; y++)
+                    {
+                        sf::Color pix = image.getPixel(x, y);
+
+                        sf::Color wanted = GetNearest(pix, colors, 100000000, colorDepth);
                     
 
-                    image.setPixel(x, y, wanted);
+                        image.setPixel(x, y, wanted);
 
-                    sf::Color error = sf::Color(std::clamp(pix.r - wanted.r, 0, 255), std::clamp(pix.g - wanted.g, 0, 255), std::clamp(pix.b - wanted.b, 0, 255));
+                        sf::Color error = sf::Color(std::clamp(pix.r - wanted.r, 0, 255), std::clamp(pix.g - wanted.g, 0, 255), std::clamp(pix.b - wanted.b, 0, 255));
 
-                    image.setPixel(x + 1, y, Multiply(error, 1 / 7).Add(image.getPixel(x + 1, y)));      //  error distribution
-                    image.setPixel(x + 1, y + 1, Multiply(error, 1 / 1).Add(image.getPixel(x + 1, y + 1)));
-                    image.setPixel(x, y + 1, Multiply(error, 1 / 5).Add(image.getPixel(x, y + 1)));
-                    image.setPixel(x - 1, y + 1, Multiply(error, 1 / 3).Add(image.getPixel(x - 1, y + 1)));
+                        image.setPixel(x + 1, y, Add(Multiply(error, 1 / 7), image.getPixel(x + 1, y)));      //  error distribution
+                        image.setPixel(x + 1, y + 1, Add(Multiply(error, 1 / 1), image.getPixel(x + 1, y + 1)));
+                        image.setPixel(x, y + 1, Add(Multiply(error, 1 / 5), image.getPixel(x, y + 1)));
+                        image.setPixel(x - 1, y + 1, Add(Multiply(error, 1 / 3), image.getPixel(x - 1, y + 1)));
+                    }
                 }
+
+                return colors;
             }
 
-            return colors;
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="img">Image to save</param>
-        /// <param name="path">Path to saved image</param>
-        static public void SaveToFile(Image img, Color[] colors, string path = "")
-        {
-            FileStream fileStream = new FileStream(path, FileMode.Create, FileAccess.Write);
-            string write = "";
-            int bitsize = (int)Math.Ceiling(Math.Log2((double)colors.Length));
-
-            byte[] bytes = BitConverter.GetBytes(img.Size.X);
-            fileStream.WriteByte(bytes[0]);
-            fileStream.WriteByte(bytes[1]);
-            fileStream.WriteByte(bytes[2]);
-            fileStream.WriteByte(bytes[3]);
-
-            bytes = BitConverter.GetBytes(img.Size.Y);
-            fileStream.WriteByte(bytes[0]);
-            fileStream.WriteByte(bytes[1]);
-            fileStream.WriteByte(bytes[2]);
-            fileStream.WriteByte(bytes[3]);
-
-            fileStream.WriteByte((byte)colors.Length);  // first byte in file is number of colors
-            foreach (Color color in colors) 
+            /// <summary>
+            /// 
+            /// </summary>
+            /// <param name="img">Image to save</param>
+            /// <param name="path">Path to saved image</param>
+            /*static void SaveToFile(sf::Image img, sf::Color colors, std::string path = "")
             {
-                fileStream.WriteByte(color.R);
-                fileStream.WriteByte(color.G);
-                fileStream.WriteByte(color.B);
-            }
+                FileStream fileStream = new FileStream(path, FileMode.Create, FileAccess.Write);
+                string write = "";
+                int bitsize = (int)Math.Ceiling(Math.Log2((double)colors.Length));
 
-            for (int x = 0; x < img.Size.X; x++)
-            {
-                for (int y = 0; y < img.Size.Y; y++)
+                byte[] bytes = BitConverter.GetBytes(img.Size.X);
+                fileStream.WriteByte(bytes[0]);
+                fileStream.WriteByte(bytes[1]);
+                fileStream.WriteByte(bytes[2]);
+                fileStream.WriteByte(bytes[3]);
+
+                bytes = BitConverter.GetBytes(img.Size.Y);
+                fileStream.WriteByte(bytes[0]);
+                fileStream.WriteByte(bytes[1]);
+                fileStream.WriteByte(bytes[2]);
+                fileStream.WriteByte(bytes[3]);
+
+                fileStream.WriteByte((byte)colors.Length);  // first byte in file is number of colors
+                foreach (Color color in colors) 
                 {
-                    for (byte k = 0; k < colors.Length; k++)
+                    fileStream.WriteByte(color.R);
+                    fileStream.WriteByte(color.G);
+                    fileStream.WriteByte(color.B);
+                }
+
+                for (int x = 0; x < img.Size.X; x++)
+                {
+                    for (int y = 0; y < img.Size.Y; y++)
                     {
-                        if (colors[k] == img.GetPixel((uint)x, (uint)y))
+                        for (byte k = 0; k < colors.Length; k++)
                         {
-                            write += Convert.ToString(k, 2);
-                            break;
+                            if (colors[k] == img.GetPixel((uint)x, (uint)y))
+                            {
+                                write += Convert.ToString(k, 2);
+                                break;
+                            }
                         }
                     }
                 }
-            }
 
-            Console.WriteLine(write);
-        }
-    }
+                Console.WriteLine(write);
+            }*/
+    };
 }
