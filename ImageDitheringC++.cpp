@@ -4,10 +4,13 @@ int main()
 {
     sf::Image img;
     img.loadFromFile("img.png");
-    sf::Color* colors = ImageDithering::Utils::Dither(img, 8);
+    sf::Color* colors = ImageDithering::Utils::Dither(img, 32);
+    sf::Texture t;
+    t.loadFromImage(img);
+    sf::Sprite s;
+    s.setTexture(t);
 
-    sf::RenderWindow window(sf::VideoMode(200, 200), "SFML works!");
-
+    sf::RenderWindow window(sf::VideoMode(img.getSize().x, img.getSize().y), "SFML works!");
 
     while (window.isOpen())
     {
@@ -19,6 +22,7 @@ int main()
         }
 
         window.clear();
+        window.draw(s);
         window.display();
     }
 

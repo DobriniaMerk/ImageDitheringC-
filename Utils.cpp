@@ -32,7 +32,7 @@ namespace ImageDithering
         /// <param name="img">Source image</param>
         /// <param name="colorNum">Number of colors to return; Must be a power of two</param>
         /// <returns>Array of Color[colorNum]</returns>
-        /*static sf::Color* QuantizeMedian(sf::Image img, int colorNum)
+        static sf::Color* QuantizeMedian(sf::Image img, int colorNum)
         {
             sf::Color** oldColors = new sf::Color*[colorNum];
             sf::Color** newColors = new sf::Color*[colorNum];
@@ -100,7 +100,7 @@ namespace ImageDithering
             }
 
             return ret;
-        }*/
+        }
 
 
         /// <summary>
@@ -108,7 +108,7 @@ namespace ImageDithering
         /// </summary>
         /// <param name="colors">Colors[] to split</param>
         /// <returns>sf::Color[][]</returns>
-        /*static sf::Color** QuantizeMedianSplitOptimal(sf::Color* colors, int colorsLength)
+        static sf::Color** QuantizeMedianSplitOptimal(sf::Color* colors, int colorsLength)
         {
             sf::Color** ret = new sf::Color*[2];
             sf::Color c;
@@ -126,42 +126,43 @@ namespace ImageDithering
 
             if (r > g && r > b)
             {
-                colors = colors.OrderBy(order => order.R).ToArray();
+                std::sort(&colors, &colors + colorsLength * sizeof(sf::Color), [](sf::Color x, sf::Color y) { return x.r < y.r; });
+                //OrderBy(order = > order.R)
                 channel = 'r';
             }
             else if (g > r && g > b)
             {
-                colors = colors.OrderBy(order => order.G).ToArray();
+                std::sort(&colors, &colors + colorsLength * sizeof(sf::Color), [](sf::Color x, sf::Color y) { return x.g < y.g; });
                 channel = 'g';
             }
             else if (b > r && b > g)
             {
-                colors = colors.OrderBy(order => order.B).ToArray();
+                std::sort(&colors, &colors + colorsLength * sizeof(sf::Color), [](sf::Color x, sf::Color y) { return x.b < y.b; });
                 channel = 'b';
             }
 
-            int split = colors.Length / 2;
+            int split = colorsLength / 2;
             int sumFirst = 0, sumSecond = 0;
-            int fn = 0, sn = colors.Length;
+            int fn = 0, sn = colorsLength;
             int t;
             float maxDiff = 0;
 
 
-            for (int i = 0; i < colors.Length; i++)
-                sumSecond += channel == 'r' ? colors[i].R : channel == 'g' ? colors[i].G : colors[i].B;
+            for (int i = 0; i < colorsLength; i++)
+                sumSecond += channel == 'r' ? colors[i].r : channel == 'g' ? colors[i].g : colors[i].b;
 
-            for (int i = 0; i < colors.Length - 1; i+= 1)
+            for (int i = 0; i < colorsLength - 1; i+= 1)
             {
-                t = channel == 'r' ? colors[i].R : channel == 'g' ? colors[i].G : colors[i].B;
+                t = channel == 'r' ? colors[i].r : channel == 'g' ? colors[i].g : colors[i].b;
                 sn--;
                 fn++;
                 sumSecond -= t;
                 sumFirst += t;
 
-                if (MathF.Abs(sumFirst/fn - sumSecond/sn) > maxDiff)
+                if (abs(sumFirst/fn - sumSecond/sn) > maxDiff)
                 {
                     split = i;
-                    maxDiff = MathF.Abs(sumSecond/fn - sumFirst/sn);
+                    maxDiff = abs(sumSecond/fn - sumFirst/sn);
                 }
             }
 
@@ -169,7 +170,7 @@ namespace ImageDithering
             ret[1] = colors.Skip(colors.Length / 2).ToArray();
 
             return ret;
-        }*/
+        }
 
 
         /// <summary>
@@ -185,17 +186,18 @@ namespace ImageDithering
             sf::Vector3f sum = sf::Vector3f(0, 0, 0);
             int n, num;
 
+            std::srand(std::time(nullptr));
+
             for (int i = 0; i < colorNum; i++)
                 means[i] = sf::Color(std::rand()%255, std::rand() % 255, std::rand() % 255);
 
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < 100; i++)
             {
                 num = 0;
 
                 //foreach(sf::Color mean in means)
                 for(int j = 0; j < colorNum; j++)
                 {
-                    std::cout << num << std::endl;
                     sum = sum * 0.0f;
                     n = 0;
                     auto s = img.getSize();
@@ -262,29 +264,30 @@ namespace ImageDithering
         }
 
         public:
-            static sf::Color* Dither(sf::Image _image, int colorDepth)
+            static sf::Color* Dither(sf::Image& image, int colorDepth)
             {
-                sf::Image image = _image;
                 sf::Color* colors;
                 colors = Quantize(image, colorDepth);
 
-                for (int x = 0; x < image.getSize().x; x++)
+                for (int x = 0; x < image.getSize().x - 1; x++)
                 {
-                    for (int y = 0; y < image.getSize().y; y++)
+                    for (int y = 0; y < image.getSize().y - 1; y++)
                     {
                         sf::Color pix = image.getPixel(x, y);
 
                         sf::Color wanted = GetNearest(pix, colors, 100000000, colorDepth);
-                    
+                        
 
                         image.setPixel(x, y, wanted);
 
                         sf::Color error = sf::Color(std::clamp(pix.r - wanted.r, 0, 255), std::clamp(pix.g - wanted.g, 0, 255), std::clamp(pix.b - wanted.b, 0, 255));
+                       
 
                         image.setPixel(x + 1, y, Add(Multiply(error, 1 / 7), image.getPixel(x + 1, y)));      //  error distribution
                         image.setPixel(x + 1, y + 1, Add(Multiply(error, 1 / 1), image.getPixel(x + 1, y + 1)));
                         image.setPixel(x, y + 1, Add(Multiply(error, 1 / 5), image.getPixel(x, y + 1)));
                         image.setPixel(x - 1, y + 1, Add(Multiply(error, 1 / 3), image.getPixel(x - 1, y + 1)));
+                        
                     }
                 }
 
