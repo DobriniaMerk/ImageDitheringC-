@@ -68,7 +68,7 @@ namespace ImageDithering
                 filledRows *= 2;
 
                 for (int y = 0; y < filledRows; y++)
-                {;
+                {
                     std::copy(newColors[y], newColors[y] + arraySize * sizeof(sf::Color), oldColors[y]);  //  ATTENTION, MAY NOT WORK
                     //std::copy(newColors[y], newColors[y] + arraySize, oldColors[y]); // if upper not working
                     //oldColors[y] = newColors[y].Clone();  // copy newColors to oldColors
@@ -102,14 +102,14 @@ namespace ImageDithering
             return ret;
         }
 
-
         /// <summary>
         /// Splits "colors" array in best point by maximum color channel
         /// </summary>
         /// <param name="colors">Colors[] to split</param>
         /// <returns>sf::Color[][]</returns>
-        static sf::Color** QuantizeMedianSplitOptimal(sf::Color* colors, int colorsLength)
+        static sf::Color** QuantizeMedianSplitOptimal(sf::Color* _colors, int colorsLength)
         {
+            sf::Color* colors = _colors;
             sf::Color** ret = new sf::Color*[2];
             sf::Color c;
             int r = 0, g = 0, b = 0;
@@ -126,18 +126,45 @@ namespace ImageDithering
 
             if (r > g && r > b)
             {
-                std::sort(&colors, &colors + colorsLength * sizeof(sf::Color), [](sf::Color x, sf::Color y) { return x.r < y.r; });
+                std::vector<sf::Color> myColors;
+                for (int i = 0; i < colorsLength; i++)
+                {
+                    myColors.push_back(colors[i]);
+                }
                 //OrderBy(order = > order.R)
+                std::sort(myColors.begin(),myColors.end(), [](sf::Color x, sf::Color y) { return x.r < y.r; });
+                for (int i = 0; i < colorsLength; i++)
+                {
+                    colors[i] = myColors[i];
+                }
                 channel = 'r';
             }
             else if (g > r && g > b)
             {
-                std::sort(&colors, &colors + colorsLength * sizeof(sf::Color), [](sf::Color x, sf::Color y) { return x.g < y.g; });
+                std::vector<sf::Color> myColors;
+                for (int i = 0; i < colorsLength; i++)
+                {
+                    myColors.push_back(colors[i]);
+                }
+                std::sort(myColors.begin(), myColors.end(), [](sf::Color x, sf::Color y) { return x.g < y.g; });
+                for (int i = 0; i < colorsLength; i++)
+                {
+                    colors[i] = myColors[i];
+                }
                 channel = 'g';
             }
             else if (b > r && b > g)
             {
-                std::sort(&colors, &colors + colorsLength * sizeof(sf::Color), [](sf::Color x, sf::Color y) { return x.b < y.b; });
+                std::vector<sf::Color> myColors;
+                for (int i = 0; i < colorsLength; i++)
+                {
+                    myColors.push_back(colors[i]);
+                }
+                std::sort(myColors.begin(), myColors.end(), [](sf::Color x, sf::Color y) { return x.b < y.b; });
+                for (int i = 0; i < colorsLength; i++)
+                {
+                    colors[i] = myColors[i];
+                }
                 channel = 'b';
             }
 
@@ -166,8 +193,16 @@ namespace ImageDithering
                 }
             }
 
-            ret[0] = colors.Take(colors.Length / 2).ToArray();
-            ret[1] = colors.Skip(colors.Length / 2).ToArray();
+            ret[0] = new sf::Color[split];
+            ret[1] = new sf::Color[colorsLength - split];
+
+            for (int i = 0; i < colorsLength; i++)
+            {
+                if (i < split)
+                    ret[0][i] = colors[i];
+                else
+                    ret[1][i - split] = colors[i];
+            }
 
             return ret;
         }
@@ -267,7 +302,7 @@ namespace ImageDithering
             static sf::Color* Dither(sf::Image& image, int colorDepth)
             {
                 sf::Color* colors;
-                colors = Quantize(image, colorDepth);
+                colors = QuantizeMedian(image, colorDepth);
 
                 for (int x = 0; x < image.getSize().x - 1; x++)
                 {
