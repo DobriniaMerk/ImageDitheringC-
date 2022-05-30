@@ -69,7 +69,7 @@ namespace ImageDithering
 
                 for (int y = 0; y < filledRows; y++)
                 {
-                    std::copy(newColors[y], newColors[y] + arraySize * sizeof(sf::Color), oldColors[y]);  //  ATTENTION, MAY NOT WORK
+                    std::copy(newColors[y], newColors[y] + arraySize * sizeof(sf::Color), oldColors[y]);  //  ATTENTION, NOT WORKING
                     //std::copy(newColors[y], newColors[y] + arraySize, oldColors[y]); // if upper not working
                     //oldColors[y] = newColors[y].Clone();  // copy newColors to oldColors
                     newColors[y] = new sf::Color[arraySize];
