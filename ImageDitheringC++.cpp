@@ -2,6 +2,9 @@
 
 int main()
 {
+    long long ago;//in a galaxy far far away
+
+
     sf::Image img;
     img.loadFromFile("img.png");
     sf::Color* colors = ImageDithering::Utils::Dither(img, 32);

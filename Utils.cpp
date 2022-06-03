@@ -41,7 +41,7 @@ namespace ImageDithering
             auto s = img.getSize();
 
             //  Temp variables
-            int skip = 70;
+            int skip = 300;
             int arraySize = (s.x * s.y) / skip;
             int filledRows = 1;
             //  Temp variables
@@ -60,7 +60,7 @@ namespace ImageDithering
             {
                 for (int j = 0; j < filledRows; j++)
                 {
-                    t = QuantizeMedianSplitOptimal(oldColors[j], arraySize);  // split each filled row
+                    t = QuantizeMedianSplit(oldColors[j], arraySize);  // split each filled row
                     newColors[j * 2] = t[0];
                     newColors[j * 2 + 1] = t[1];  // assign them to newColors
                 }
@@ -69,13 +69,16 @@ namespace ImageDithering
 
                 for (int y = 0; y < filledRows; y++)
                 {
-                    std::copy(&newColors[y], &newColors[y] + arraySize * sizeof(sf::Color), &oldColors[y]);  //  ATTENTION, NOT WORKING
-                    //std::copy(newColors[y], newColors[y] + arraySize, oldColors[y]); // if upper not working
+                    //std::copy(&newColors[y], &newColors[y] + arraySize * sizeof(sf::Color), &oldColors[y]);  //  ATTENTION, NOT WORKING
+                    std::copy(&newColors[y], &newColors[y] + arraySize, &oldColors[y]); // if upper not working
                     //oldColors[y] = newColors[y].Clone();  // copy newColors to oldColors
-                    newColors[y] = new sf::Color[arraySize];
+                    for(int i = 0; i < arraySize; i++)
+                    {
+                        newColors[y][i] = sf::Color(0, 0, 0);
+                    }
                 }
 
-                std::cout << filledRows << std::endl;
+                //std::cout << filledRows << std::endl;
             }
 
             sf::Color* ret = new sf::Color[colorNum];  // colors to return
@@ -102,12 +105,92 @@ namespace ImageDithering
             return ret;
         }
 
+
+        /// <summary>
+        /// Splits "colors" array in halves by maximum color channel
+        /// </summary>
+        /// <param name="colors">Colors to split</param>
+        /// <returns></returns>
+        static sf::Color** QuantizeMedianSplit(sf::Color* colors, int colorsLength)
+        {
+            sf::Color** ret = new sf::Color*[2];
+            sf::Color c;
+            ret[0] = new sf::Color[colorsLength / 2];
+            ret[1] = new sf::Color[colorsLength / 2];
+            int r = 0, g = 0, b = 0;
+
+            for (int i = 0; i < colorsLength; i++)
+            {
+                c = colors[i];
+                r += c.r;
+                g += c.g;
+                b += c.b;
+            }
+
+            if (r > g && r > b)
+            {
+                std::vector<sf::Color> myColors;
+                for (int i = 0; i < colorsLength; i++)
+                {
+                    myColors.push_back(colors[i]);
+                }
+                //OrderBy(order = > order.R)
+                std::sort(myColors.begin(), myColors.end(), [](sf::Color x, sf::Color y) { return x.r < y.r; });
+                for (int i = 0; i < colorsLength; i++)
+                {
+                    colors[i] = myColors[i];
+                }
+            }
+            else if (g > r && g > b)
+            {
+                std::vector<sf::Color> myColors;
+                for (int i = 0; i < colorsLength; i++)
+                {
+                    myColors.push_back(colors[i]);
+                }
+                std::sort(myColors.begin(), myColors.end(), [](sf::Color x, sf::Color y) { return x.g < y.g; });
+                for (int i = 0; i < colorsLength; i++)
+                {
+                    colors[i] = myColors[i];
+                }
+            }
+            else if (b > r && b > g)
+            {
+                std::vector<sf::Color> myColors;
+                for (int i = 0; i < colorsLength; i++)
+                {
+                    myColors.push_back(colors[i]);
+                }
+                std::sort(myColors.begin(), myColors.end(), [](sf::Color x, sf::Color y) { return x.b < y.b; });
+                for (int i = 0; i < colorsLength; i++)
+                {
+                    colors[i] = myColors[i];
+                }
+            }
+
+            for (int i = 0; i < colorsLength; i++)
+            {
+                if (i < colorsLength / 2)
+                {
+                    ret[0][i] = colors[i];
+                }
+                else
+                {
+                    ret[1][i] = colors[i];
+                }
+            }
+
+            return ret;
+        }
+
+
+
         /// <summary>
         /// Splits "colors" array in best point by maximum color channel
         /// </summary>
         /// <param name="colors">Colors[] to split</param>
         /// <returns>sf::Color[][]</returns>
-        static sf::Color** QuantizeMedianSplitOptimal(sf::Color* _colors, int colorsLength)
+        /*static sf::Color** QuantizeMedianSplitOptimal(sf::Color* _colors, int colorsLength)
         {
             sf::Color* colors = _colors;
             sf::Color** ret = new sf::Color*[2];
@@ -205,7 +288,7 @@ namespace ImageDithering
             }
 
             return ret;
-        }
+        }*/
 
 
         /// <summary>
