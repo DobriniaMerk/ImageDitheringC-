@@ -36,21 +36,12 @@ namespace ImageDithering
         {
             auto s = img.getSize();
 
-            //  Temp variables
-            int skip = 60;
-            int arraySize = (s.x * s.y) / skip;
+            int skip = 10;
             int filledRows = 1;
-            //  Temp variables
 
             std::vector< std::vector<sf::Color> > oldColors(colorNum);
             std::vector< std::vector<sf::Color> > newColors(colorNum);
             std::vector< std::vector<sf::Color> > t;
-
-            for (int i = 0; i < colorNum; i++)  // initialize arrays
-            {
-                oldColors.push_back(std::vector<sf::Color>());
-                newColors.push_back(std::vector<sf::Color>());
-            }
 
             for (int i = 0; i < s.x; i += skip)  // set first array of oldColors to img pixels, with interval of skip
                 for(int j = 0; j < s.y; j += skip)
@@ -98,6 +89,9 @@ namespace ImageDithering
                 ret[i] = sf::Color(sum.x, sum.y, sum.z);
             }
 
+            for (int i = 0; i < ret.size(); i++)
+                std::cout << (int)ret[i].r << ", " << (int)ret[i].g << ", " << (int)ret[i].b << std::endl;
+
             return ret;
         }
 
@@ -123,11 +117,11 @@ namespace ImageDithering
             }
 
             if (r > g && r > b)
-                std::sort(_colors.begin(), _colors.end(), [](sf::Color x, sf::Color y) { return x.r < y.r; });
+                std::sort(colors.begin(), colors.end(), [](sf::Color x, sf::Color y) { return x.r < y.r; });
             else if (g > r && g > b)
-                std::sort(_colors.begin(), _colors.end(), [](sf::Color x, sf::Color y) { return x.g < y.g; });
+                std::sort(colors.begin(), colors.end(), [](sf::Color x, sf::Color y) { return x.g < y.g; });
             else if (b > r && b > g)
-                std::sort(_colors.begin(), _colors.end(), [](sf::Color x, sf::Color y) { return x.b < y.b; });
+                std::sort(colors.begin(), colors.end(), [](sf::Color x, sf::Color y) { return x.b < y.b; });
 
 
             for (int i = 0; i < colors.size(); i++)
@@ -282,7 +276,7 @@ namespace ImageDithering
                     auto s = img.getSize();
                     int imgSize = s.x * s.y;
                     
-                    for (int k = 3; k < imgSize; k += 300)
+                    for (int k = 1; k < imgSize; k += 30)
                     {
                         color = sf::Color(img.getPixel(k%s.x, k/s.x));
                         if (GetNearest(color, means, 250) == means[j])
@@ -302,6 +296,11 @@ namespace ImageDithering
                     num++;
                 }
             }
+
+            std::cout << "----------------------" << std::endl;
+            for (int i = 0; i < means.size(); i++)
+                std::cout << (int)means[i].r << ", " << (int)means[i].g << ", " << (int)means[i].b << std::endl;
+
 
             return means;
         }
@@ -346,10 +345,7 @@ namespace ImageDithering
             static std::vector<sf::Color> Dither(sf::Image& image, int colorDepth)
             {
                 std::vector<sf::Color> colors;
-                colors = QuantizeMedian(image, colorDepth);
-
-                for (int i = 0; i < colorDepth; i++)
-                    std::cout << (int)colors[i].r << ", " << (int)colors[i].g << ", " << (int)colors[i].b << std::endl;
+                colors = Quantize(image, colorDepth);
 
                 for (int x = 0; x < image.getSize().x - 1; x++)
                 {

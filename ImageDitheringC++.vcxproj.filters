@@ -29,5 +29,8 @@
     <Image Include="img.png">
       <Filter>Файлы ресурсов</Filter>
     </Image>
+    <Image Include="img2.png">
+      <Filter>Файлы ресурсов</Filter>
+    </Image>
   </ItemGroup>
 </Project>
