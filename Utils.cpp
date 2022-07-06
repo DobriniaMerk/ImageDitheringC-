@@ -32,64 +32,60 @@ namespace ImageDithering
         /// <param name="img">Source image</param>
         /// <param name="colorNum">Number of colors to return; Must be a power of two</param>
         /// <returns>Array of Color[colorNum]</returns>
-        static sf::Color* QuantizeMedian(sf::Image img, int colorNum)
+        static std::vector <sf::Color> QuantizeMedian(sf::Image img, int colorNum)
         {
-            sf::Color** oldColors = new sf::Color*[colorNum];
-            sf::Color** newColors = new sf::Color*[colorNum];
-            sf::Color** t = new sf::Color*[colorNum];
-
             auto s = img.getSize();
 
             //  Temp variables
-            int skip = 300;
+            int skip = 60;
             int arraySize = (s.x * s.y) / skip;
             int filledRows = 1;
             //  Temp variables
 
+            std::vector< std::vector<sf::Color> > oldColors(colorNum);
+            std::vector< std::vector<sf::Color> > newColors(colorNum);
+            std::vector< std::vector<sf::Color> > t;
+
             for (int i = 0; i < colorNum; i++)  // initialize arrays
             {
-                newColors[i] = new sf::Color[arraySize];
-                oldColors[i] = new sf::Color[arraySize];
+                oldColors.push_back(std::vector<sf::Color>());
+                newColors.push_back(std::vector<sf::Color>());
             }
 
             for (int i = 0; i < s.x; i += skip)  // set first array of oldColors to img pixels, with interval of skip
                 for(int j = 0; j < s.y; j += skip)
-                    oldColors[0][i] = img.getPixel(i, j);
+                    oldColors[0].push_back(img.getPixel(i, j));
+
 
             while (filledRows < colorNum)  // while not all colors are done
             {
                 for (int j = 0; j < filledRows; j++)
                 {
-                    t = QuantizeMedianSplit(oldColors[j], arraySize);  // split each filled row
+                    t = QuantizeMedianSplit(oldColors[j]);  // split each filled row
                     newColors[j * 2] = t[0];
                     newColors[j * 2 + 1] = t[1];  // assign them to newColors
                 }
 
                 filledRows *= 2;
 
+                oldColors = newColors;
                 for (int y = 0; y < filledRows; y++)
-                {
-                    //std::copy(&newColors[y], &newColors[y] + arraySize * sizeof(sf::Color), &oldColors[y]);  //  ATTENTION, NOT WORKING
-                    std::copy(&newColors[y], &newColors[y] + arraySize, &oldColors[y]); // if upper not working
-                    //oldColors[y] = newColors[y].Clone();  // copy newColors to oldColors
-                    for(int i = 0; i < arraySize; i++)
-                    {
-                        newColors[y][i] = sf::Color(0, 0, 0);
-                    }
-                }
-
-                //std::cout << filledRows << std::endl;
+                    newColors[y].clear();
             }
 
-            sf::Color* ret = new sf::Color[colorNum];  // colors to return
+            std::vector<sf::Color> ret(colorNum);  // colors to return
             sf::Vector3f sum = sf::Vector3f(0, 0, 0);
             sf::Color c;
+            float n;
 
             for (int i = 0; i < colorNum; i++)  // calculate mean color of each array and return them
             {
-                float n = 0;
-                //foreach (sf::Color c in oldColors[i])
-                for(int j = 0; j < arraySize; j++)
+                n = 0;
+                sum.x = 0;
+                sum.y = 0;
+                sum.z = 0;
+
+                for(int j = 0; j < oldColors[i].size(); j++)
                 {
                     c = oldColors[i][j];
                     sum.x += c.r;
@@ -111,15 +107,14 @@ namespace ImageDithering
         /// </summary>
         /// <param name="colors">Colors to split</param>
         /// <returns></returns>
-        static sf::Color** QuantizeMedianSplit(sf::Color* colors, int colorsLength)
+        static std::vector<std::vector<sf::Color> > QuantizeMedianSplit(std::vector<sf::Color> _colors)
         {
-            sf::Color** ret = new sf::Color*[2];
+            std::vector<std::vector<sf::Color> > ret(2);
+            std::vector<sf::Color> colors = _colors;
             sf::Color c;
-            ret[0] = new sf::Color[colorsLength / 2];
-            ret[1] = new sf::Color[colorsLength / 2];
             int r = 0, g = 0, b = 0;
 
-            for (int i = 0; i < colorsLength; i++)
+            for (int i = 0; i < colors.size(); i++)
             {
                 c = colors[i];
                 r += c.r;
@@ -128,55 +123,22 @@ namespace ImageDithering
             }
 
             if (r > g && r > b)
-            {
-                std::vector<sf::Color> myColors;
-                for (int i = 0; i < colorsLength; i++)
-                {
-                    myColors.push_back(colors[i]);
-                }
-                //OrderBy(order = > order.R)
-                std::sort(myColors.begin(), myColors.end(), [](sf::Color x, sf::Color y) { return x.r < y.r; });
-                for (int i = 0; i < colorsLength; i++)
-                {
-                    colors[i] = myColors[i];
-                }
-            }
+                std::sort(_colors.begin(), _colors.end(), [](sf::Color x, sf::Color y) { return x.r < y.r; });
             else if (g > r && g > b)
-            {
-                std::vector<sf::Color> myColors;
-                for (int i = 0; i < colorsLength; i++)
-                {
-                    myColors.push_back(colors[i]);
-                }
-                std::sort(myColors.begin(), myColors.end(), [](sf::Color x, sf::Color y) { return x.g < y.g; });
-                for (int i = 0; i < colorsLength; i++)
-                {
-                    colors[i] = myColors[i];
-                }
-            }
+                std::sort(_colors.begin(), _colors.end(), [](sf::Color x, sf::Color y) { return x.g < y.g; });
             else if (b > r && b > g)
-            {
-                std::vector<sf::Color> myColors;
-                for (int i = 0; i < colorsLength; i++)
-                {
-                    myColors.push_back(colors[i]);
-                }
-                std::sort(myColors.begin(), myColors.end(), [](sf::Color x, sf::Color y) { return x.b < y.b; });
-                for (int i = 0; i < colorsLength; i++)
-                {
-                    colors[i] = myColors[i];
-                }
-            }
+                std::sort(_colors.begin(), _colors.end(), [](sf::Color x, sf::Color y) { return x.b < y.b; });
 
-            for (int i = 0; i < colorsLength; i++)
+
+            for (int i = 0; i < colors.size(); i++)
             {
-                if (i < colorsLength / 2)
+                if (i < colors.size() / 2)
                 {
-                    ret[0][i] = colors[i];
+                    ret[0].push_back(colors[i]);
                 }
                 else
                 {
-                    ret[1][i] = colors[i];
+                    ret[1].push_back(colors[i]);
                 }
             }
 
@@ -297,17 +259,16 @@ namespace ImageDithering
         /// <param name="img">Sourse image to take colors out</param>
         /// <param name="colorNum">Number of colors to return</param>
         /// <returns>Color[colorNum]</returns>
-        static sf::Color* Quantize(sf::Image img, int colorNum)
+        static std::vector<sf::Color> Quantize(sf::Image img, int colorNum)
         {
-            sf::Color* means = new sf::Color[colorNum];
+            std::vector<sf::Color> means(colorNum);
             sf::Color color;
             sf::Vector3f sum = sf::Vector3f(0, 0, 0);
             int n, num;
 
             std::srand(std::time(nullptr));
 
-            for (int i = 0; i < colorNum; i++)
-                means[i] = sf::Color(std::rand()%255, std::rand() % 255, std::rand() % 255);
+            means = QuantizeMedian(img, colorNum);
 
             for (int i = 0; i < 100; i++)
             {
@@ -324,7 +285,7 @@ namespace ImageDithering
                     for (int k = 3; k < imgSize; k += 300)
                     {
                         color = sf::Color(img.getPixel(k%s.x, k/s.x));
-                        if (GetNearest(color, means, 250, colorNum) == means[j])
+                        if (GetNearest(color, means, 250) == means[j])
                         {
                             sum.x += color.r;
                             sum.y += color.g;
@@ -359,14 +320,14 @@ namespace ImageDithering
         /// <param name="search">Array for searching in</param>
         /// <param name="maxDist">Maximum distance of nearest color</param>
         /// <returns>Color</returns>
-        static sf::Color GetNearest(sf::Color color, sf::Color* search, int maxDist, int searchSize)
+        static sf::Color GetNearest(sf::Color color, std::vector<sf::Color> search, int maxDist)
         {
             float dist = -1, tDist = 0;
             sf::Color ret = color;
             sf::Color c;
 
             //foreach (sf::Color c in search)
-            for(int i = 0; i < searchSize; i++)
+            for(int i = 0; i < search.size(); i++)
             {
                 c = search[i];
                 tDist = DistanceTo(color, c);
@@ -382,10 +343,13 @@ namespace ImageDithering
         }
 
         public:
-            static sf::Color* Dither(sf::Image& image, int colorDepth)
+            static std::vector<sf::Color> Dither(sf::Image& image, int colorDepth)
             {
-                sf::Color* colors;
+                std::vector<sf::Color> colors;
                 colors = QuantizeMedian(image, colorDepth);
+
+                for (int i = 0; i < colorDepth; i++)
+                    std::cout << (int)colors[i].r << ", " << (int)colors[i].g << ", " << (int)colors[i].b << std::endl;
 
                 for (int x = 0; x < image.getSize().x - 1; x++)
                 {
@@ -393,7 +357,7 @@ namespace ImageDithering
                     {
                         sf::Color pix = image.getPixel(x, y);
 
-                        sf::Color wanted = GetNearest(pix, colors, 100000000, colorDepth);
+                        sf::Color wanted = GetNearest(pix, colors, 100000000);
                         
 
                         image.setPixel(x, y, wanted);

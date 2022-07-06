@@ -2,18 +2,16 @@
 
 int main()
 {
-    long long ago;//in a galaxy far far away
-
-
     sf::Image img;
     img.loadFromFile("img.png");
-    sf::Color* colors = ImageDithering::Utils::Dither(img, 32);
+
+    sf::RenderWindow window(sf::VideoMode(img.getSize().x, img.getSize().y), "SFML works!");
+
+    std::vector<sf::Color> colors = ImageDithering::Utils::Dither(img, 8);
     sf::Texture t;
     t.loadFromImage(img);
     sf::Sprite s;
     s.setTexture(t);
-
-    sf::RenderWindow window(sf::VideoMode(img.getSize().x, img.getSize().y), "SFML works!");
 
     while (window.isOpen())
     {
