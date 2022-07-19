@@ -1,4 +1,5 @@
 ﻿#include <iostream>
+#include <fstream>
 #include <algorithm>
 #include <iterator>
 #include <SFML/Window.hpp>
@@ -377,48 +378,19 @@ namespace ImageDithering
             /// </summary>
             /// <param name="img">Image to save</param>
             /// <param name="path">Path to saved image</param>
-            /*static void SaveToFile(sf::Image img, sf::Color colors, std::string path = "")
+            static void SaveToFile(sf::Image img, std::vector<sf::Color> colors, std::string path = "", std::string filename = "out.fsd")
             {
-                FileStream fileStream = new FileStream(path, FileMode.Create, FileAccess.Write);
-                string write = "";
-                int bitsize = (int)Math.Ceiling(Math.Log2((double)colors.Length));
+                std::ofstream filestream(filename, std::ios::in|std::ios::binary|std::ios::trunc);
+            }
 
-                byte[] bytes = BitConverter.GetBytes(img.Size.X);
-                fileStream.WriteByte(bytes[0]);
-                fileStream.WriteByte(bytes[1]);
-                fileStream.WriteByte(bytes[2]);
-                fileStream.WriteByte(bytes[3]);
+            static void WriteByBits(std::byte write, std::ifstream file)
+            {
+                
+            }
 
-                bytes = BitConverter.GetBytes(img.Size.Y);
-                fileStream.WriteByte(bytes[0]);
-                fileStream.WriteByte(bytes[1]);
-                fileStream.WriteByte(bytes[2]);
-                fileStream.WriteByte(bytes[3]);
-
-                fileStream.WriteByte((byte)colors.Length);  // first byte in file is number of colors
-                foreach (Color color in colors) 
-                {
-                    fileStream.WriteByte(color.R);
-                    fileStream.WriteByte(color.G);
-                    fileStream.WriteByte(color.B);
-                }
-
-                for (int x = 0; x < img.Size.X; x++)
-                {
-                    for (int y = 0; y < img.Size.Y; y++)
-                    {
-                        for (byte k = 0; k < colors.Length; k++)
-                        {
-                            if (colors[k] == img.GetPixel((uint)x, (uint)y))
-                            {
-                                write += Convert.ToString(k, 2);
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                Console.WriteLine(write);
-            }*/
+            static int bit_at(int position, unsigned char byte)
+            {
+                return (byte & (1 << (position - 1)));
+            }
     };
 }
