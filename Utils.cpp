@@ -348,9 +348,9 @@ namespace ImageDithering
                 std::vector<sf::Color> colors;
                 colors = Quantize(image, colorDepth);
 
-                for (int x = 0; x < image.getSize().x - 1; x++)
+                for (int x = 0; x < image.getSize().x; x++)
                 {
-                    for (int y = 0; y < image.getSize().y - 1; y++)
+                    for (int y = 0; y < image.getSize().y; y++)
                     {
                         sf::Color pix = image.getPixel(x, y);
 
@@ -361,11 +361,15 @@ namespace ImageDithering
 
                         sf::Color error = sf::Color(std::clamp(pix.r - wanted.r, 0, 255), std::clamp(pix.g - wanted.g, 0, 255), std::clamp(pix.b - wanted.b, 0, 255));
                        
-
-                        image.setPixel(x + 1, y, Add(Multiply(error, 1 / 7), image.getPixel(x + 1, y)));      //  error distribution
-                        image.setPixel(x + 1, y + 1, Add(Multiply(error, 1 / 1), image.getPixel(x + 1, y + 1)));
-                        image.setPixel(x, y + 1, Add(Multiply(error, 1 / 5), image.getPixel(x, y + 1)));
-                        image.setPixel(x - 1, y + 1, Add(Multiply(error, 1 / 3), image.getPixel(x - 1, y + 1)));
+                        if (x < image.getSize().x - 1)  //  error distribution;  if's are almost black magic so do not touch without need
+                            image.setPixel(x + 1, y, Add(Multiply(error, 1 / 7), image.getPixel(x + 1, y)));
+                        if (y < image.getSize().y - 1)
+                        {
+                            if (x < image.getSize().x - 1)
+                                image.setPixel(x + 1, y + 1, Add(Multiply(error, 1 / 1), image.getPixel(x + 1, y + 1)));
+                            image.setPixel(x, y + 1, Add(Multiply(error, 1 / 5), image.getPixel(x, y + 1)));
+                            image.setPixel(x - 1, y + 1, Add(Multiply(error, 1 / 3), image.getPixel(x - 1, y + 1)));
+                        }
                         
                     }
                 }
@@ -380,17 +384,121 @@ namespace ImageDithering
             /// <param name="path">Path to saved image</param>
             static void SaveToFile(sf::Image img, std::vector<sf::Color> colors, std::string path = "", std::string filename = "out.fsd")
             {
-                std::ofstream filestream(filename, std::ios::in|std::ios::binary|std::ios::trunc);
+                std::ofstream filestream(filename, std::ios::in|std::ios::binary|std::ios::trunc);  // std::ios::trunc is for writing file over instead of appending
+                sf::Vector2u size = img.getSize();
+                filestream.write((char*)&size.x, sizeof(unsigned int));  // first 4 bytes is x of image
+                filestream.write((char*)&size.y, sizeof(unsigned int));  // second 4 bytes is y
+
+                char colornum = colors.size();
+                filestream.write(&colornum, sizeof(char));               // next byte is number of colors
+
+                std::cout << "-------------------" << std::endl;
+
+                char r, g, b;
+                for (int i = 0; i < (int)colornum; i++)                  // then colornum*3 bytes representing colors
+                {
+                    r = (char)colors[i].r;
+                    g = (char)colors[i].g;
+                    b = (char)colors[i].b;
+                    filestream.write(&r, sizeof(r));
+                    filestream.write(&g, sizeof(g));
+                    filestream.write(&b, sizeof(b));
+                    std::cout << (int)r << ", " << (int)g << ", " << (int)b << std::endl;
+                }
+
+
+                sf::Color pixelColor, color = img.getPixel(0, 0);  // write first pixel in memory
+                char rowLength = 1;
+
+                int x, y;
+
+                for (int n = 1; n < size.x * size.y; n++)
+                {
+                    x = n % size.x;
+                    y = n / size.x;
+                    pixelColor = img.getPixel(x, y);
+                    if (pixelColor == color && rowLength < 254)    // if current pixel color matches color of row     // 255 is reserved
+                    {
+                        rowLength++;
+                    }
+                    else                                           // if not, write current row length and color to file and start new row
+                    {
+                        char code = 0;
+
+                        for (char i = 0; i < colors.size(); i++)   // search for matching color code
+                        {
+                            if (color == colors[i])
+                            {
+                                code = i;
+                                break;
+                            }
+                        }
+
+                        filestream.write(&rowLength, sizeof(char));
+                        filestream.write(&code, sizeof(char));
+                        color = pixelColor;
+                        rowLength = 1;
+                    }
+                }
+
+                filestream.flush();
+                filestream.close();
             }
 
-            static void WriteByBits(std::byte write, std::ifstream file)
+
+            static sf::Image ReadFileTest(std::string filename = "out.fsd")
             {
+                sf::Image img;
+                std::ifstream file(filename, std::ios::out | std::ios::binary);
+                unsigned int x, y;
+                char colornum;
+
+
+                file.read((char*)&x, sizeof(unsigned int));
+                file.read((char*)&y, sizeof(unsigned int));        // get image x and y size
+                file.read(&colornum, sizeof(char));                // number of colors
+                img.create(x, y, sf::Color(255, 0, 0));  // filled with red for debugging
+
+                std::cout << "-------------------" << std::endl;
+                std::cout << "X: " << x << " Y: " << y << std::endl << "Number of colors: " << (int)colornum << std::endl;
+
+
+                std::vector<sf::Color> colors;
+
+                for (int i = 0; i < (int)colornum; i++)
+                {
+                    char r, g, b;
+                    file.read(&r, sizeof(char));
+                    file.read(&g, sizeof(char));
+                    file.read(&b, sizeof(char));
+                    colors.push_back(sf::Color(r, g, b));
+                }
+
+                int n = 0;
+                sf::Color writeColor;
+
+                while (n / x < y)
+                {
+                    char num, code;
+
+                    file.read(&num, sizeof(char));
+                    file.read(&code, sizeof(char));
+
+                    writeColor = colors[code];
+
+                    for (int i = 0; i < num; i++)
+                    {
+                        img.setPixel(n % x, n / x, writeColor);
+                        n++;
+                    }
+
+                    if (file.eof())
+                        break;
+                }
                 
-            }
+                file.close();
 
-            static int bit_at(int position, unsigned char byte)
-            {
-                return (byte & (1 << (position - 1)));
+                return img;
             }
     };
 }

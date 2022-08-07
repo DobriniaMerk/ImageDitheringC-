@@ -8,6 +8,9 @@ int main()
     sf::RenderWindow window(sf::VideoMode(img.getSize().x, img.getSize().y), "SFML works!");
 
     std::vector<sf::Color> colors = ImageDithering::Utils::Dither(img, 8);
+    ImageDithering::Utils::SaveToFile(img, colors);
+    img = ImageDithering::Utils::ReadFileTest();
+
     sf::Texture t;
     t.loadFromImage(img);
     sf::Sprite s;
