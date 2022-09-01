@@ -409,17 +409,21 @@ namespace ImageDithering
 
                 sf::Color pixelColor, color = img.getPixel(0, 0);  // write first pixel in memory
                 char rowLength = 1;
+                int rowsum = 0;
 
                 int x, y;
 
                 for (int n = 1; n < size.x * size.y; n++)
                 {
+                    int t;
                     x = n % size.x;
                     y = n / size.x;
                     pixelColor = img.getPixel(x, y);
                     if (pixelColor == color && rowLength < 254)    // if current pixel color matches color of row     // 255 is reserved
                     {
-                        rowLength++;
+                        t = rowLength;
+                        t++;
+                        rowLength = static_cast<char>(t);
                     }
                     else                                           // if not, write current row length and color to file and start new row
                     {
@@ -437,16 +441,19 @@ namespace ImageDithering
                         filestream.write(&rowLength, sizeof(char));
                         filestream.write(&code, sizeof(char));
                         color = pixelColor;
-                        rowLength = 1;
+                        rowsum += rowLength;
+                        rowLength = static_cast <char>(1);
                     }
                 }
+
+                std::cout << "Sum of all rowlengths: " << rowsum << "\n";
 
                 filestream.flush();
                 filestream.close();
             }
 
 
-            static sf::Image ReadFileTest(std::string filename = "out.fsd")
+            static sf::Image ReadFile(std::string filename = "out.fsd")
             {
                 sf::Image img;
                 std::ifstream file(filename, std::ios::out | std::ios::binary);
@@ -479,7 +486,7 @@ namespace ImageDithering
 
                 while (n / x < y)
                 {
-                    char num, code;
+                    char num = 0, code = 0;
 
                     file.read(&num, sizeof(char));
                     file.read(&code, sizeof(char));
