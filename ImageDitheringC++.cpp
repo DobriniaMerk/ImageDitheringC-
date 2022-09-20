@@ -1,16 +1,22 @@
 ﻿#include "Utils.cpp"
+#include <iostream>
+
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
 
 int main()
 {
+    int colornum;
+    std::string filename;
+
     sf::Image img;
-    img.loadFromFile("img2.png");
+    img.loadFromFile("img.png");
 
     sf::RenderWindow window(sf::VideoMode(img.getSize().x, img.getSize().y), "SFML works!");
 
-    //std::vector<sf::Color> colors = ImageDithering::Utils::Dither(img, 8);
-    std::vector<sf::Color> colors;
-    colors.push_back(sf::Color(0, 0, 0));
-    colors.push_back(sf::Color(255, 255, 255));
+    std::vector<sf::Color> colors = ImageDithering::Utils::Dither(img, 8);
     ImageDithering::Utils::SaveToFile(img, colors);
     img = ImageDithering::Utils::ReadFile();
 

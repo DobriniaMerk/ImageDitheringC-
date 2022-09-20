@@ -6,6 +6,8 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/System.hpp>
 
+#define bp char BREAKPOINT = '1'
+
 namespace ImageDithering
 {
     static class Utils
@@ -370,7 +372,6 @@ namespace ImageDithering
                             image.setPixel(x, y + 1, Add(Multiply(error, 1 / 5), image.getPixel(x, y + 1)));
                             image.setPixel(x - 1, y + 1, Add(Multiply(error, 1 / 3), image.getPixel(x - 1, y + 1)));
                         }
-                        
                     }
                 }
 
@@ -413,13 +414,17 @@ namespace ImageDithering
 
                 int x, y;
 
+                char code, maxrow = static_cast<char>(254);
+
                 for (int n = 1; n < size.x * size.y; n++)
                 {
                     int t;
+                    
                     x = n % size.x;
                     y = n / size.x;
+
                     pixelColor = img.getPixel(x, y);
-                    if (pixelColor == color && rowLength < 254)    // if current pixel color matches color of row     // 255 is reserved
+                    if (pixelColor == color && rowLength < maxrow)    // if current pixel color matches color of row     // 255 is reserved
                     {
                         t = rowLength;
                         t++;
@@ -427,7 +432,7 @@ namespace ImageDithering
                     }
                     else                                           // if not, write current row length and color to file and start new row
                     {
-                        char code = 0;
+                        code = 0;
 
                         for (char i = 0; i < colors.size(); i++)   // search for matching color code
                         {
@@ -445,6 +450,18 @@ namespace ImageDithering
                         rowLength = static_cast <char>(1);
                     }
                 }
+
+                for (char i = 0; i < colors.size(); i++)   // search for matching color code
+                {
+                    if (color == colors[i])
+                    {
+                        code = i;
+                        break;
+                    }
+                }
+
+                filestream.write(&rowLength, sizeof(char));
+                filestream.write(&code, sizeof(char));
 
                 std::cout << "Sum of all rowlengths: " << rowsum << "\n";
 
@@ -486,21 +503,21 @@ namespace ImageDithering
 
                 while (n / x < y)
                 {
-                    char num = 0, code = 0;
+                    if (file.eof())
+                        break;
 
+                    char num = 0, code = 0;
                     file.read(&num, sizeof(char));
                     file.read(&code, sizeof(char));
 
                     writeColor = colors[code];
 
-                    for (int i = 0; i < num; i++)
+                    for (char i = 0; i < num; i++)
                     {
                         img.setPixel(n % x, n / x, writeColor);
                         n++;
                     }
 
-                    if (file.eof())
-                        break;
                 }
                 
                 file.close();
